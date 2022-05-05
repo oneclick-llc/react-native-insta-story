@@ -1,5 +1,5 @@
-import {StatusBar} from 'expo-status-bar';
-import {StyleSheet, Text, View} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, Text, View } from 'react-native';
 import InstaStory from 'react-native-insta-story';
 
 export default function App() {
@@ -16,6 +16,7 @@ export default function App() {
                     {
                         story_id: i,
                         story_image: "https://picsum.photos/500/800?random=" + Math.random(),
+                        story_video: Math.random() < 0.3 ? "https://assets.mixkit.co/videos/download/mixkit-portrait-of-a-woman-in-a-pool-1259.mp4" : null,
                         swipeText: 'Custom swipe text for this story',
                         onPress: () => console.log(`story ${i} swiped`),
                     }
@@ -34,14 +35,14 @@ export default function App() {
 
     return (
         <View style={styles.container}>
-            <StatusBar style="auto"/>
+            <StatusBar style="auto" />
             <InstaStory data={createData()}
-                        duration={10}
-                        customSwipeUpComponent={<View>
-                            <Text>Swipe</Text>
-                        </View>}
+                duration={30}
+                customSwipeUpComponent={<View>
+                    <Text>Swipe</Text>
+                </View>}
 
-                        style={{marginTop: 30}}
+                style={{ marginTop: 30 }}
             />
         </View>
     );

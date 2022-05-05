@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Animated,
     Image,
@@ -12,12 +12,14 @@ import {
     Platform,
     SafeAreaView
 } from "react-native";
-import type {IUserStoryItem} from "./interfaces/IUserStory";
-import {usePrevious} from "./helpers/StateHelpers";
-import {isNullOrWhitespace} from "./helpers/ValidationHelpers";
+import type { IUserStoryItem } from "./interfaces/IUserStory";
+import { usePrevious } from "./helpers/StateHelpers";
+import { isNullOrWhitespace } from "./helpers/ValidationHelpers";
 import GestureRecognizer from 'react-native-swipe-gestures';
+import { StoryVideoPlayer } from './StoryVideoPlayer';
 
-const {width, height} = Dimensions.get('window');
+
+const { width, height } = Dimensions.get('window');
 
 type Props = {
     profileName: string,
@@ -41,13 +43,16 @@ export const StoryListItem = (props: Props) => {
         stories.map((x) => {
             return {
                 image: x.story_image,
+                video: x.story_video,
                 onPress: x.onPress,
                 swipeText: x.swipeText,
-                finish: 0
+                finish: 0,
+                start: 0
             }
         }));
 
     const [current, setCurrent] = useState(0);
+    const [isMuted, setIsMuted] = useState(false);
 
     const progress = useRef(new Animated.Value(0)).current;
 
@@ -65,11 +70,14 @@ export const StoryListItem = (props: Props) => {
         data.map((x, i) => {
             if (isPrevious) {
                 x.finish = 1;
+                x.start = 0;
                 if (i == content.length - 1) {
                     x.finish = 0;
+                    x.start = 1;
                 }
             } else {
                 x.finish = 0;
+                x.start = 1;
             }
 
         })
@@ -101,7 +109,7 @@ export const StoryListItem = (props: Props) => {
             toValue: 1,
             duration: props.duration,
             useNativeDriver: false
-        }).start(({finished}) => {
+        }).start(({ finished }) => {
             if (finished) {
                 next();
             }
@@ -132,6 +140,8 @@ export const StoryListItem = (props: Props) => {
         if (current !== content.length - 1) {
             let data = [...content];
             data[current].finish = 1;
+            data[current].start = 0;
+            data[current + 1].start = 1;
             setContent(data);
             setCurrent(current + 1);
             progress.setValue(0);
@@ -147,6 +157,8 @@ export const StoryListItem = (props: Props) => {
         if (current - 1 >= 0) {
             let data = [...content];
             data[current].finish = 0;
+            data[current].start = 0;
+            data[current - 1].start = 1;
             setContent(data);
             setCurrent(current - 1);
             progress.setValue(0);
@@ -158,7 +170,10 @@ export const StoryListItem = (props: Props) => {
 
     function close(state) {
         let data = [...content];
-        data.map(x => x.finish = 0);
+        data.map(x => {
+            x.finish = 0
+            x.start = 0
+        });
         setContent(data);
         progress.setValue(0);
         if (props.currentPage == props.index) {
@@ -169,6 +184,8 @@ export const StoryListItem = (props: Props) => {
     }
 
     const swipeText = content?.[current]?.swipeText || props.swipeText || 'Swipe Up';
+
+    // console.log(content[current])
 
     return (
         <GestureRecognizer
@@ -182,16 +199,25 @@ export const StoryListItem = (props: Props) => {
         >
             <SafeAreaView>
                 <View style={styles.backgroundContainer}>
-                    <Image onLoadEnd={() => start()}
-                           source={{uri: content[current].image}}
-                           style={styles.image}
-                    />
+                    {content[current].video ?
+                        <View style={styles.image}><StoryVideoPlayer
+                            uri={content[current].video}
+                            isMuted={isMuted}
+                            shouldStart={content[current].start}
+                            onToggleMuted={(toggledValue) => setIsMuted(toggledValue)}
+                            onLoadEnd={() => start()}
+                        /></View>
+                        : <Image onLoadEnd={() => start()}
+                            source={{ uri: content[current].image }}
+                            style={styles.image}
+                        />
+                    }
                     {load && <View style={styles.spinnerContainer}>
-                        <ActivityIndicator size="large" color={'white'}/>
+                        <ActivityIndicator size="large" color={'white'} />
                     </View>}
                 </View>
             </SafeAreaView>
-            <View style={{flexDirection: 'column', flex: 1,}}>
+            <View style={{ flexDirection: 'column', flex: 1, }}>
                 <View style={styles.animationBarContainer}>
                     {content.map((index, key) => {
                         return (
@@ -208,9 +234,9 @@ export const StoryListItem = (props: Props) => {
                     })}
                 </View>
                 <View style={styles.userContainer}>
-                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Image style={styles.avatarImage}
-                               source={{uri: props.profileImage}}
+                            source={{ uri: props.profileImage }}
                         />
                         <Text style={styles.avatarText}>{props.profileName}</Text>
                     </View>
@@ -222,7 +248,7 @@ export const StoryListItem = (props: Props) => {
                         <View style={styles.closeIconContainer}>
                             {props.customCloseComponent ?
                                 props.customCloseComponent :
-                                <Text style={{color: 'white'}}>X</Text>
+                                <Text style={{ color: 'white' }}>X</Text>
                             }
                         </View>
                     </TouchableOpacity>
@@ -241,32 +267,32 @@ export const StoryListItem = (props: Props) => {
                             }
                         }}
                     >
-                        <View style={{flex: 1}}/>
+                        <View style={{ flex: 1 }} />
                     </TouchableWithoutFeedback>
                     <TouchableWithoutFeedback onPressIn={() => progress.stopAnimation()}
-                                              onLongPress={() => setPressed(true)}
-                                              onPressOut={() => {
-                                                  setPressed(false);
-                                                  startAnimation();
-                                              }}
-                                              onPress={() => {
-                                                  if (!pressed && !load) {
-                                                      next()
-                                                  }
-                                              }}>
-                        <View style={{flex: 1}}/>
+                        onLongPress={() => setPressed(true)}
+                        onPressOut={() => {
+                            setPressed(false);
+                            startAnimation();
+                        }}
+                        onPress={() => {
+                            if (!pressed && !load) {
+                                next()
+                            }
+                        }}>
+                        <View style={{ flex: 1 }} />
                     </TouchableWithoutFeedback>
                 </View>
             </View>
             {content[current].onPress &&
                 <TouchableOpacity activeOpacity={1}
-                                  onPress={onSwipeUp}
-                                  style={styles.swipeUpBtn}>
+                    onPress={onSwipeUp}
+                    style={styles.swipeUpBtn}>
                     {props.customSwipeUpComponent ?
                         props.customSwipeUpComponent :
                         <>
-                            <Text style={{color: 'white', marginTop: 5}}></Text>
-                            <Text style={{color: 'white', marginTop: 5}}>{swipeText}</Text>
+                            <Text style={{ color: 'white', marginTop: 5 }}></Text>
+                            <Text style={{ color: 'white', marginTop: 5 }}>{swipeText}</Text>
                         </>
                     }
                 </TouchableOpacity>}
